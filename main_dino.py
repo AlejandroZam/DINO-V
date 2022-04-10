@@ -38,7 +38,7 @@ import utils
 import vision_transformer as vits
 from vision_transformer import DINOHead
 
-from dl import basic_dataloader, collate_fn_train
+from dataloader import basic_dataloader, collate_fn_train
 from vivit import ViViT
 import parameters as params
 
