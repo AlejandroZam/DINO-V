@@ -1,0 +1,5 @@
+path_folder = '/home/ishan/self_supervised/paths_crcv_node'
+#path_folder = '/home/ishan/self_supervised/paths/'
+class_mapping = '/home/ishan/self_supervised/paths/action_classes.json'
+saved_models_dir = '/home/br087771/saveModel/'
+logs = 'logs/'
