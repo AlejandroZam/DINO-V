@@ -17,7 +17,7 @@ Misc functions.
 Mostly copy-paste from torchvision references or other public repos like DETR:
 https://github.com/facebookresearch/detr/blob/master/util/misc.py
 """
-import cv2
+#import cv2
 
 import os
 import sys
@@ -44,24 +44,24 @@ def crop_center_square(frame):
   return frame[start_y:start_y+min_dim,start_x:start_x+min_dim]
 
 
-def load_video(path, max_frames=0, resize=(224, 224)):
-  cap = cv2.VideoCapture(path)
-  frames = []
-  try:
-    while True:
-      ret, frame = cap.read()
-      if not ret:
-        break
-      frame = crop_center_square(frame)
-      frame = cv2.resize(frame, resize)
-      frame = frame[:, :, [2, 1, 0]]
-      frames.append(frame)
+# def load_video(path, max_frames=0, resize=(224, 224)):
+#   cap = cv2.VideoCapture(path)
+#   frames = []
+#   try:
+#     while True:
+#       ret, frame = cap.read()
+#       if not ret:
+#         break
+#       frame = crop_center_square(frame)
+#       frame = cv2.resize(frame, resize)
+#       frame = frame[:, :, [2, 1, 0]]
+#       frames.append(frame)
       
-      if len(frames) == max_frames:
-        break
-  finally:
-    cap.release()
-  return np.array(frames) / 255.0
+#       if len(frames) == max_frames:
+#         break
+#   finally:
+#     cap.release()
+#   return np.array(frames) / 255.0
 
 
 class GaussianBlur(object):
@@ -518,7 +518,7 @@ def init_distributed_mode(args):
         print('Does not support training without GPU.')
         sys.exit(1)
 
-    '''dist.init_process_group(
+    dist.init_process_group(
         backend="nccl",
         init_method=args.dist_url,
         world_size=args.world_size,
@@ -529,7 +529,7 @@ def init_distributed_mode(args):
     print('| distributed init (rank {}): {}'.format(
         args.rank, args.dist_url), flush=True)
     dist.barrier()
-    setup_for_distributed(args.rank == 0)'''
+    setup_for_distributed(args.rank == 0)
 
 
 def accuracy(output, target, topk=(1,)):
