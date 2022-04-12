@@ -28,3 +28,5 @@ warmup = len(warmup_array)
 num_classes = 102
 temperature = 3.0
 alpha = 0.1
+
+weights = 'C:\\Users\\Alejo\\Desktop\\AdvCVspring22\\project\\weights\\model_1_bestAcc_10.398.pth'

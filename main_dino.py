@@ -30,10 +30,9 @@ import torch.nn as nn
 import torch.distributed as dist
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
-import torch.nn.MSELoss as MSE
+#import torch.nn.MSELoss as MSE
 from torchvision import datasets, transforms
 from torchvision import models as torchvision_models
-
 import utils
 import vision_transformer as vits
 from vision_transformer import DINOHead
@@ -227,8 +226,8 @@ def train_dino(args):
         args.warmup_teacher_temp_epochs,
         args.epochs,
     )
-    spatial_loss = MSE()
-    temporal_loss = MSE()
+    # spatial_loss = MSE()
+    # temporal_loss = MSE()
     if torch.cuda.device_count() > 0:
         dino_loss = dino_loss.cuda()
 

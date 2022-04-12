@@ -18,28 +18,34 @@ import torchvision.transforms as trans
 
 # from decord import VideoReader
 
+def load_classes(path):
+    f = open(path,'r')
+    text = f.read().splitlines()
+    f.close()
+    classes = {}
+    for t in text:
+        t = t.split(' ')
+        classes[t[1]] = t[0]
+
+    return classes
+
 class basic_dataloader(Dataset):
 
     def __init__(self, shuffle=True, data_percentage=1.0):
         # self.labeled_datapaths = open(os.path.join(cfg.path_folder,'10percentTrain_crcv.txt'),'r').read().splitlines()
-        self.labeled_datapaths = open(os.path.join(cfg.path_folder, 'ucf101_labeled.txt'), 'r').read().splitlines()
-        self.unlabled_datapaths = open(os.path.join(cfg.path_folder, 'ucf101_unlabeled.txt'), 'r').read().splitlines()
+        self.labeled_datapaths = open(os.path.join(cfg.path_folder, 'ucfTrainTestlist\\trainlist01.txt'), 'r').read().splitlines()
 
-        self.all_paths = self.labeled_datapaths + self.unlabled_datapaths
-        self.classes = json.load(open(cfg.class_mapping))['classes']
+        self.classes = load_classes(cfg.class_mapping)
+        # self.classes = json.load(open(cfg.class_mapping))['classes']
         self.shuffle = shuffle
 
-        if '/home/ishan/self_supervised/UCF101/train/PushUps/v_PushUps_g16_c04.avi' in self.all_paths:
-            self.all_paths.remove('/home/ishan/self_supervised/UCF101/train/PushUps/v_PushUps_g16_c04.avi')
-        if '/home/ishan/self_supervised/UCF101/train/HorseRiding/v_HorseRiding_g14_c02.avi' in self.all_paths:
-            self.all_paths.remove('/home/ishan/self_supervised/UCF101/train/HorseRiding/v_HorseRiding_g14_c02.avi')
-
         if self.shuffle:
-            random.shuffle(self.all_paths)
+            random.shuffle(self.labeled_datapaths)
 
         self.data_percentage = data_percentage
-        self.data_limit = int(len(self.all_paths) * self.data_percentage)
-        self.data = self.all_paths[0: self.data_limit]
+        self.data_limit = int(len(self.labeled_datapaths) * self.data_percentage)
+
+        self.data = self.labeled_datapaths[0: self.data_limit]
         self.PIL = trans.ToPILImage()
         self.TENSOR = trans.ToTensor()
         self.erase_size = 19
@@ -55,11 +61,11 @@ class basic_dataloader(Dataset):
     def process_data(self, idx):
 
         # label_building
-        vid_path = self.data[idx]
+        vid_path = cfg.data_folder + self.data[idx]
 
         # label = self.classes[vid_path.split('/')[-1]] # THIS MIGHT BE DIFFERNT AFTER STEVE MOVE THE PATHS
-        label = self.classes[vid_path.split('/')[6]]
-
+        label = self.classes[vid_path.split('/')[7]]
+        vid_path = vid_path.split(' ')[0]
         # clip_building
         global_clip1, local_clip1a, local_clip1b = self.build_clip(vid_path)
         global_clip2, local_clip2a, local_clip2b = self.build_clip(vid_path)
@@ -170,6 +176,21 @@ class basic_dataloader(Dataset):
             return None
 
         return image
+def collate_fn_train(batch):
+    global_clip1, global_clip2, local_clip1a, local_clip1b, local_clip2a, local_clip2b, label, vid_path = [], [], [], [], [], [], [], []
+    clips = []
+    for i in range(6):
+        clips = clips + [torch.stack(item[i], dim=0) for item in batch if item[i] != None]
+    clips = torch.stack(clips, dim=0)
+    return clips
+
+def collate_fn_valid(batch):
+    clips, label, vid_path = [], [], []
+    clips = [torch.stack(item[0], dim=0) for item in batch if item[0] != None]
+    clips = torch.stack(clips, dim=0)
+    print(clips.shape)
+
+    return clips
 
 
 def collate_fn1(batch):
@@ -200,48 +221,145 @@ def collate_fn2(batch):
     return f_clip, label, vid_path, frame_list
 
 
-def collate_fn_train(batch):
-    global_clip1, global_clip2, local_clip1a, local_clip1b, local_clip2a, local_clip2b, label, vid_path = [], [], [], [], [], [], [], []
-    clips = []
-    for i in range(6):
-        clips = clips + [torch.stack(item[i], dim=0) for item in batch if item[i] != None]
-    clips = torch.stack(clips, dim=0)
 
-    '''for item in batch:
-        if not (item[0] == None or item[1] == None or item[2] == None or item[3] == None or item[4] == None or item[5] == None or item[6] == None or item[7] == None):
-            global_clip1.append(torch.stack(item[0],dim=0))
-            global_clip2.append(torch.stack(item[1],dim=0))
-            local_clip1a.append(torch.stack(item[2],dim=0))
-            local_clip1b.append(torch.stack(item[3],dim=0))
-            local_clip2a.append(torch.stack(item[4],dim=0))
-            local_clip2b.append(torch.stack(item[5],dim=0))
-            label.append(item[6])
-            vid_path.append(item[7])
 
-    global_clip1 = torch.stack(global_clip1, dim=0)
-    local_clip1a = torch.stack(local_clip1a, dim=0)
-    local_clip1b = torch.stack(local_clip1b, dim=0)
-    global_clip2 = torch.stack(global_clip2, dim=0)
-    local_clip2a = torch.stack(local_clip2a, dim=0)
-    local_clip2b = torch.stack(local_clip2b, dim=0)'''
 
-    return clips
+
+class val_dataloader(Dataset):
+
+    def __init__(self, shuffle=True, data_percentage=1.0):
+        # self.labeled_datapaths = open(os.path.join(cfg.path_folder,'10percentTrain_crcv.txt'),'r').read().splitlines()
+        self.labeled_datapaths = open(os.path.join(cfg.path_folder, 'ucfTrainTestlist\\testlist01.txt'), 'r').read().splitlines()
+
+        self.classes = load_classes(cfg.class_mapping)
+        # self.classes = json.load(open(cfg.class_mapping))['classes']
+        self.shuffle = shuffle
+
+        if self.shuffle:
+            random.shuffle(self.labeled_datapaths)
+
+        self.data_percentage = data_percentage
+        self.data_limit = int(len(self.labeled_datapaths) * self.data_percentage)
+
+        self.data = self.labeled_datapaths[0: self.data_limit]
+        self.PIL = trans.ToPILImage()
+        self.TENSOR = trans.ToTensor()
+        self.erase_size = 19
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        clip, label, vid_path = self.process_data(
+            index)
+        return clip, label, vid_path
+
+    def process_data(self, idx):
+
+        # label_building
+        vid_path = cfg.data_folder + self.data[idx]
+
+        # label = self.classes[vid_path.split('/')[-1]] # THIS MIGHT BE DIFFERNT AFTER STEVE MOVE THE PATHS
+        label = self.classes[vid_path.split('/')[7]]
+
+        vid_path = vid_path.split(' ')[0]
+
+        # clip_building
+        clip = self.build_clip(vid_path)
+
+
+        return clip, label, vid_path
+
+    def build_clip(self, vid_path):
+
+        try:
+            cap = cv2.VideoCapture(vid_path)
+            cap.set(1, 0)
+            frame_count = cap.get(7)
+
+            ############################# frame_list maker start here#################################
+
+            skip_frames_full = params.fix_skip  # frame_count/(params.num_frames)
+
+            left_over = frame_count - params.fix_skip * params.num_frames
+
+            if left_over <= 0:
+                start_frame_full = 0
+            else:
+                start_frame_full = np.random.randint(0, int(left_over))
+
+            t_frames = start_frame_full + np.asarray(
+                [int(int(skip_frames_full) * f) for f in range(params.num_frames)])
+
+
+            if t_frames[-1] >= frame_count:
+                t_frames[-1] = int(frame_count - 1)
+
+            ################################ frame list maker finishes here ###########################
+
+            ################################ actual clip builder starts here ##########################
+            clip = []
+            count = -1
+            list_full = []
+            while (cap.isOpened()):
+                count += 1
+                ret, frame = cap.read()
+                if ret == True:
+                    if (count in t_frames):
+                        clip.append(self.resize_frame(frame, params.reso_h, params.reso_w))
+                        list_full.append(count)
+
+                else:
+                    break
+
+            if len(clip) < params.num_frames and len(clip) > (params.num_frames / 2):
+                remaining_num_frames = params.num_frames - len(clip)
+                clip = clip + clip[::-1][1:remaining_num_frames + 1]
+
+            return clip
+
+        except:
+            print('issue')
+            return None
+
+    def resize_frame(self, image, x0, y0):
+
+        try:
+            image = self.PIL(image)
+            image = image.resize((x0,y0))
+            image = trans.functional.to_tensor(image)
+        except:
+            print('resize Error')
+            return None
+
+        return image
+
 
 
 if __name__ == '__main__':
 
-    train_dataset = basic_dataloader(shuffle=False, data_percentage=1.0)
+    train_dataset = basic_dataloader(shuffle=True, data_percentage=0.2)
     train_dataloader = DataLoader(train_dataset, batch_size=8, \
-                                  shuffle=True, num_workers=8, collate_fn=collate_fn_train)
+                                 shuffle=True, num_workers=8, collate_fn=collate_fn_train)
 
+    val_dataset = val_dataloader(shuffle=True, data_percentage=0.2)
+    valid_dataloader = DataLoader(val_dataset, batch_size=8, \
+                                  shuffle=True, num_workers=8,collate_fn=collate_fn_valid)
     print(f'Step involved: {len(train_dataset) / params.batch_size}')
     t = time.time()
 
-    for i, clips in enumerate(train_dataloader):
-        if i % 10 == 0:
-            print()
-            print(clips.shape)
-            clips = clips.permute(0, 1, 3, 4, 2)
-            print(f'Full_clip shape is {clips.shape}')
-            print(f'Label is {label}')
-    print(f'Time taken to load data is {time.time() - t}')
+    # for i, clips in enumerate(train_dataloader):
+    #     if i % 10 == 0:
+    #         print(clips.shape)
+    #         # clips = clips.permute(0, 1, 3, 4, 2)
+    #         # print(f'Full_clip shape is {clips.shape}')
+    #         # print(f'Label is {label}')
+    # print(f'Time taken to load data is {time.time() - t}')
+    # for i, clips in enumerate(valid_dataloader):
+    #     if i % 10 == 0:
+    #         print(type(clips[0]))
+    #         break
+    #         # clips = clips.permute(0, 1, 3, 4, 2)
+    #         # print(f'Full_clip shape is {clips.shape}')
+    #         # print(f'Label is {label}')
+    # print(f'Time taken to load data is {time.time() - t}')

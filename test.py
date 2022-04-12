@@ -11,38 +11,56 @@ import torch
 import re
 import tempfile
 from utils import load_pretrained_weights
-
-
-
+from eval_linear import LinearClassifier
+from torch import nn
+import utils
+import torch.distributed as dist
 #from transformers import PerceiverFeatureExtractor
 
 #feature_extractor = PerceiverFeatureExtractor()
 
 ucf101dir = 'C:\\Users\\Alejo\\Desktop\\AdvCVspring22\\project\\UCF-101'
-pretrained_weights_path = 'C:\\Users\\Alejo\\Desktop\\perciver-dino\\DINO-V\\weights\\vivit_model_imagenet_21k_224.pth'
 
 
-# img = torch.ones([1, 16, 3, 224, 224]).cuda()
-# #image_size, patch_size, num_classes, num_frames, dim=192, depth=4, heads=3, pool='cls',in_channels=3, dim_head=64, dropout=0.,emb_dropout=0., scale_dim=4,
-#
-model = ViViT(224, 16, 16, 100)
-#
-# load_pretrained_weights(model,pretrained_weights_path)
+ucf101indx = 'C:\\Users\\Alejo\\Desktop\\AdvCVspring22\\project\\ucfTrainTestlist\\classind.txt'
+
+ucf101tr1 = 'C:\\Users\\Alejo\\Desktop\\AdvCVspring22\\project\\ucfTrainTestlist\\trainlist01.txt'
+ucf101te1 = 'C:\\Users\\Alejo\\Desktop\\AdvCVspring22\\project\\ucfTrainTestlist\\testlist01.txt'
+
+ucf101tr2 = 'C:\\Users\\Alejo\\Desktop\\AdvCVspring22\\project\\ucfTrainTestlist\\trainlist02.txt'
+ucf101te2 = 'C:\\Users\\Alejo\\Desktop\\AdvCVspring22\\project\\ucfTrainTestlist\\testlist02.txt'
+
+ucf101tr3 = 'C:\\Users\\Alejo\\Desktop\\AdvCVspring22\\project\\ucfTrainTestlist\\trainlist03.txt'
+ucf101te3 = 'C:\\Users\\Alejo\\Desktop\\AdvCVspring22\\project\\ucfTrainTestlist\\testlist03.txt'
+
+#pretrained_weights_path = 'C:\\Users\\Alejo\\Desktop\\perciver-dino\\DINO-V\\weights\\vivit_model_imagenet_21k_224.pth'
+pretrained_weights_path = 'C:\\Users\\Alejo\\Desktop\\AdvCVspring22\\project\\weights\\model_1_bestAcc_10.398.pth'
+
+data = os.listdir(ucf101dir)
+
+f = open(ucf101indx)
+classes = f.readlines()
+f.close()
+
+class_list = []
+for c in classes:
+    class_list.append(c.split(' ')[-1].replace('\n',''))
+
+print(class_list)
 
 
-# parameters = filter(lambda p: p.requires_grad, model.parameters())
-# parameters = sum([np.prod(p.size()) for p in parameters]) / 1_000_000
-# print('Trainable Parameters: %.3fM' % parameters)
-#
-# out = model(img)
-#
-#
-#
-#
-# print(type(out))
-# print(out[0])
-# print(len(out))
-# print("Shape of out :", out.shape)  # [B, num_classes]
+f = open(ucf101tr1)
+datapath_train = f.readlines()
+f.close()
 
+print(len(datapath_train))
+print(datapath_train)
+
+f = open(ucf101te1)
+datapath_test = f.readlines()
+f.close()
+
+print(len(datapath_test))
+print(datapath_test)
 
 
