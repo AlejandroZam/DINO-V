@@ -638,7 +638,7 @@ class MultiCropWrapper(nn.Module):
         # disable layers dedicated to ImageNet labels classification
         backbone.fc, backbone.head = nn.Identity(), nn.Identity()
         self.backbone = backbone
-        self.head = head
+        #self.head = head
 
     def forward(self, x):
         # convert to list
@@ -659,7 +659,7 @@ class MultiCropWrapper(nn.Module):
             output = torch.cat((output, _out))
             start_idx = end_idx
         # Run the head forward on the concatenated features.
-        return self.head(output)
+        return output#self.head(output)
 
 
 def get_params_groups(model):

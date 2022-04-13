@@ -185,32 +185,36 @@ def train_dino(args):
         student = Perceiver(input_axis = 2,              # number of axis for input data (2 for images, 3 for video)
                             num_freq_bands = 6,          # number of freq bands, with original value (2 * K + 1)
                             max_freq = 10.,              # maximum frequency, hyperparameter depending on how fine the data is
-                            depth = 3,                   # depth of net. The shape of the final attention mechanism will be:)
+                            depth = 4,                   # depth of net. The shape of the final attention mechanism will be:)
                             latent_heads = 4,
-                            final_classifier_head=False,
-                            self_per_cross_attn = 2)      # number of self attention blocks per cross attention)
+                            num_classes=65536,
+                            weight_tie_layers=True,
+                            final_classifier_head=True,
+                            self_per_cross_attn = 1)      # number of self attention blocks per cross attention)
         teacher = Perceiver(input_axis = 2,              # number of axis for input data (2 for images, 3 for video)
                             num_freq_bands = 6,          # number of freq bands, with original value (2 * K + 1)
                             max_freq = 10.,              # maximum frequency, hyperparameter depending on how fine the data is
-                            depth = 3,                   # depth of net. The shape of the final attention mechanism will be:)
+                            depth = 4,                   # depth of net. The shape of the final attention mechanism will be:)
                             latent_heads = 4,
-                            final_classifier_head=False,
-                            self_per_cross_attn = 2)      # number of self attention blocks per cross attention)
+                            num_classes=65536,
+                            weight_tie_layers=True,
+                            final_classifier_head=True,
+                            self_per_cross_attn = 1)      # number of self attention blocks per cross attention)
         embed_dim = 512 # The latent dim of the perceiver network
     else:
         print(f"Unknown architecture: {args.arch}")
 
     # multi-crop wrapper handles forward with inputs of different resolutions
     if args.arch.lower() == 'perceiver':
-        student = utils.MultiCropWrapper(student, DINOHead(
-            embed_dim,
-            args.out_dim,
-            use_bn=args.use_bn_in_head,
-            norm_last_layer=args.norm_last_layer,
-        ))
+        student = utils.MultiCropWrapper(student, None)#DINOHead(
+        #     embed_dim,
+        #     args.out_dim,
+        #     use_bn=args.use_bn_in_head,
+        #     norm_last_layer=args.norm_last_layer,
+        # ))
         teacher = utils.MultiCropWrapper(
             teacher,
-            DINOHead(embed_dim, args.out_dim, args.use_bn_in_head),
+            None#DINOHead(embed_dim, args.out_dim, args.use_bn_in_head),
         )
     else:
         student = nn.Sequential(student, DINOHead(embed_dim, args.out_dim, args.use_bn_in_head))
@@ -224,12 +228,12 @@ def train_dino(args):
         teacher = nn.SyncBatchNorm.convert_sync_batchnorm(teacher)
 
         # we need DDP wrapper to have synchro batch norms working...
-        teacher = nn.parallel.DistributedDataParallel(teacher, device_ids=[args.gpu])
+        teacher = nn.parallel.DistributedDataParallel(teacher, device_ids=[args.gpu], find_unused_parameters=True)
         teacher_without_ddp = teacher.module
     else:
         # teacher_without_ddp and teacher are the same thing
         teacher_without_ddp = teacher
-    student = nn.parallel.DistributedDataParallel(student, device_ids=[args.gpu])
+    student = nn.parallel.DistributedDataParallel(student, device_ids=[args.gpu], find_unused_parameters=True)
     # teacher and student start with the same weights
     teacher_without_ddp.load_state_dict(student.module.state_dict())
     # there is no backpropagation through the teacher, so no need for gradients
