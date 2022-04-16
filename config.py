@@ -1,11 +1,7 @@
-#path_folder = '/home/ishan/self_supervised/paths_crcv_node'
-#path_folder = '/home/ishan/self_supervised/paths/'
-# class_mapping = '/home/ishan/self_supervised/paths/action_classes.json'
-# saved_models_dir = '/home/br087771/saveModel/'
-# logs = 'logs/'
+path_folder = '/home/cap6412.student1/DINO/'
+data_folder = '/home/cap6412.student1/DINO/'
+saved_models_dir = '/home/cap6412.student1/saveModel/'
+class_mapping = '/home/cap6412.student1/DINO/kin700_classmap.json'
+frame_counts = '/home/cap6412.student1/DINO/kin700_frame_counts.json'
+logs = 'logs/'
 
-
-path_folder = 'C:/Users/Alejo/Desktop/AdvCVspring22/project'
-saved_models_dir = 'C:/Users/Alejo/Desktop/AdvCVspring22/project/saveModel'
-class_mapping = 'C:/Users/Alejo/Desktop/AdvCVspring22/project/ucfTrainTestlist/classind.txt'
-data_folder = 'C:/Users/Alejo/Desktop/AdvCVspring22/project/UCF-101/'

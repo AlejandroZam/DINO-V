@@ -14,8 +14,8 @@ num_skips = 1
 hflip = [0] #list(range(2))
 cropping_fac1 = [0.8] #[0.7,0.85,0.8,0.75]
 
-reso_h = 224
-reso_w = 224
+reso_h = 128
+reso_w = 128
 
 ori_reso_h = 240
 ori_reso_w = 320
