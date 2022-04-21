@@ -1,0 +1,5 @@
+path_folder = '/home/cap6412.student1/DINO/'
+data_folder = '/home/cap6412.student1/DINO/'
+saved_models_dir = '/home/cap6412.student1/saveModel/'
+class_mapping = '/home/cap6412.student1/DINO/action_classes.json'
+logs = 'logs/'
