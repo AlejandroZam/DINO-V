@@ -38,7 +38,7 @@ import utils
 import vision_transformer as vits
 from vision_transformer import DINOHead
 
-from dl import basic_dataloader, collate_fn_train
+from dataloader import basic_dataloader, collate_fn_train
 from vivit import ViViT
 import parameters as params
 
@@ -299,14 +299,17 @@ def train_dino(args):
         if fp16_scaler is not None:
             save_dict['fp16_scaler'] = fp16_scaler.state_dict()
         
+        if os.path.exists(cfg.save_models_dir)
+            os.makedir(cfg.save_models_dir)
         if loss_val < best:
             best = loss_val
-            save_file_path = os.path.join('./train_models/sp_loss', 'model_{}_best_{}.pth'.format(epoch+1, str(loss_val)[:6]))
+            save_file_path = os.path.join(cfg.save_models_dir, 'model_{}_best_{}.pth'.format(epoch+1, str(loss_val)[:6]))
             torch.save(save_dict, save_file_path)
         if epoch+1 % 5 == 0:
-            save_file_path = os.path.join('./train_models/sp_loss', 'model_{}.pth'.format(epoch+1))
+            save_file_path = os.path.join(cfg.save_models_dir, 'model_{}.pth'.format(epoch+1))
             torch.save(save_dict, save_file_path)
 
+        torch.save(save_dict, os.path.join(cfg.save_models_dir, 'model_tmp.pth'))
         '''utils.save_on_master(save_dict, os.path.join(args.output_dir, 'checkpoint.pth'))
         if args.saveckp_freq and epoch % args.saveckp_freq == 0:
             utils.save_on_master(save_dict, os.path.join(args.output_dir, f'checkpoint{epoch:04}.pth'))
@@ -342,17 +345,20 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, spatial_lo
             teacher_output, teacher_attn = teacher(clips[:params.batch_size*2], 'teacher')  # only the global views pass through the teacher
             student_output, student_attn = student(clips, 'student')
             d_loss = dino_loss(student_output, teacher_output, epoch)
-            te_attn_la = teacher_attn[:,:8,:]
-            te_attn_lb = teacher_attn[:,8:,:]
-            st_attn = st_attn[params.batch_size*2:]
+            try:
+                te_attn_la = teacher_attn[:,:8,:]
+                te_attn_lb = teacher_attn[:,8:,:]
+                st_attn = st_attn[params.batch_size*2:]
 
-            te_attn = torch.stack([te_attn_la[0], te_attn_la[1], te_attn_lb[0], te_attn_lb[1]], dim=0).view(4, -1)
-            st_attn = torch.stack([st_attn[0], st_attn[2], st_attn[1], st_attn[3]], dim=0).view(4, -1)
+                te_attn = torch.stack([te_attn_la[0], te_attn_la[1], te_attn_lb[0], te_attn_lb[1]], dim=0).view(4, -1)
+                st_attn = torch.stack([st_attn[0], st_attn[2], st_attn[1], st_attn[3]], dim=0).view(4, -1)
             
-            sp_loss = spatial_loss(st_attn, te_attn)
+                sp_loss = spatial_loss(st_attn, te_attn)
 
-            loss = 0.5*d_loss + 0.5*sp_loss
-
+                loss = 0.5*d_loss + 0.5*sp_loss
+            except:
+                print(f'Spatial loss error {st_attn.shape}')
+                loss = d_loss
         if it % 25 == 0:
             print(f'Loss for epoch {epoch+1}/{args.epochs} iteration {it} is {loss.item()}')
 

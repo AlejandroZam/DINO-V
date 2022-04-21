@@ -33,7 +33,10 @@ class basic_dataloader(Dataset):
 
     def __init__(self, shuffle=True, data_percentage=1.0):
         # self.labeled_datapaths = open(os.path.join(cfg.path_folder,'10percentTrain_crcv.txt'),'r').read().splitlines()
-        self.labeled_datapaths = open(os.path.join(cfg.path_folder, 'ucfTrainTestlist\\trainlist01.txt'), 'r').read().splitlines()
+        self.labeled_datapaths = open(os.path.join(cfg.path_folder, 'UCF_labeled.txt'), 'r').read().splitlines()
+        self.unlabeled_datapaths = open(os.path.join(cfg.path_folder, 'UCF_unlabeled.txt'), 'r').read().splitlines()
+
+        self.all_paths = self.labeled_datapaths + self.unlabeled_datapaths
 
         self.classes = load_classes(cfg.class_mapping)
         # self.classes = json.load(open(cfg.class_mapping))['classes']
@@ -43,9 +46,9 @@ class basic_dataloader(Dataset):
             random.shuffle(self.labeled_datapaths)
 
         self.data_percentage = data_percentage
-        self.data_limit = int(len(self.labeled_datapaths) * self.data_percentage)
+        self.data_limit = int(len(self.all_paths) * self.data_percentage)
 
-        self.data = self.labeled_datapaths[0: self.data_limit]
+        self.data = self.all_paths[0: self.data_limit]
         self.PIL = trans.ToPILImage()
         self.TENSOR = trans.ToTensor()
         self.erase_size = 19
@@ -229,7 +232,7 @@ class val_dataloader(Dataset):
 
     def __init__(self, shuffle=True, data_percentage=1.0):
         # self.labeled_datapaths = open(os.path.join(cfg.path_folder,'10percentTrain_crcv.txt'),'r').read().splitlines()
-        self.labeled_datapaths = open(os.path.join(cfg.path_folder, 'ucfTrainTestlist\\testlist01.txt'), 'r').read().splitlines()
+        self.labeled_datapaths = open(os.path.join(cfg.path_folder, 'UCF_test.txt'), 'r').read().splitlines()
 
         self.classes = load_classes(cfg.class_mapping)
         # self.classes = json.load(open(cfg.class_mapping))['classes']

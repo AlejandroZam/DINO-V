@@ -43,7 +43,7 @@ class Transformer(nn.Module):
   
 class ViViT(nn.Module):
     def __init__(self, image_size, patch_size, num_frames, num_classes = 100, dim = 192, depth = 4, heads = 3, pool = 'cls', in_channels = 3, dim_head = 64, dropout = 0.,
-                 emb_dropout = 0., scale_dim = 4, classifier=False, patch_type='2d'):
+                 emb_dropout = 0., scale_dim = 4, classifier=False, patch_type='2d', type='student'):
         super().__init__()
         
         assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
@@ -62,6 +62,7 @@ class ViViT(nn.Module):
                 nn.Linear(patch_dim, dim),
             )
         self.patch_type = patch_type.lower()
+        self.type = type
 
         self.pos_embedding = nn.Parameter(torch.randn(1, num_frames, num_patches + 1, dim))
         self.space_token = nn.Parameter(torch.randn(1, 1, dim))
@@ -82,7 +83,7 @@ class ViViT(nn.Module):
             self.linear_classifier = nn.Linear(dim, num_classes)
         self.classifier = classifier
 
-    def forward(self, x, type):
+    def forward(self, x):
         if self.patch_type == '3d':
             x = x.permute(0,2,1,3,4)
         #print(x.shape)
@@ -106,9 +107,11 @@ class ViViT(nn.Module):
         x = rearrange(x[:, 0], '(b t) ... -> b t ...', b=b)
         #print(x.shape)
 
-        if type == 'student':
+        sp_attn = rearrange(sp_attn[:, 0], '(b t) ... -> b t ...',b=b)
+        #print(f'{self.type} attn {sp_attn.shape}')
+        if self.type == 'student':
             cls_sp_attn = sp_attn[:,::2,0,1:]
-        elif type == 'teacher':
+        elif self.type == 'teacher':
             cls_sp_attn = sp_attn[:,:,0,1:]
 
         cls_temporal_tokens = repeat(self.temporal_token, '() n d -> b n d', b=b)
@@ -131,14 +134,28 @@ class ViViT(nn.Module):
 
 if __name__ == "__main__":
     
-    img = torch.ones([1, 16, 3, 224, 224])#.cuda()
+    img = torch.ones([6, 16, 3, 224, 224])#.cuda()
     
-    model = ViViT(224, 16, 16, 100, patch_type='3D')#.cuda()
-    parameters = filter(lambda p: p.requires_grad, model.parameters())
-    parameters = sum([np.prod(p.size()) for p in parameters]) / 1_000_000
-    print('Trainable Parameters: %.3fM' % parameters)
+    teacher = ViViT(224, 16, 16, 100, patch_type='2D', type='teacher')#.cuda()
+    student = ViViT(224, 16, 16, 100, patch_type='2D', type='student')#.cuda()
+    #parameters = filter(lambda p: p.requires_grad, model.parameters())
+    #parameters = sum([np.prod(p.size()) for p in parameters]) / 1_000_000
+    #print('Trainable Parameters: %.3fM' % parameters)
     
-    out = model(img)
+    t_out, t_attn = teacher(img)
+    st_out, st_attn = student(img)
+    print(f't_attn: {t_attn.shape}')
+    print(f'st_attn: {st_attn.shape}')
+    
+    te_attn_la = t_attn[:,:8,:]
+    te_attn_lb = t_attn[:,8:,:]
+    st_attn = st_attn[1*2:]
+
+    te_attn = torch.stack([te_attn_la[0], te_attn_la[1], te_attn_lb[0], te_attn_lb[1]], dim=0).view(4, -1)
+    st_attn = torch.stack([st_attn[0], st_attn[2], st_attn[1], st_attn[3]], dim=0).view(4, -1)
+
+    print(f'final te attn {te_attn.shape}')
+    print(f'final st attn {st_attn.shape}')
     
     print("Shape of out :", out.shape)      # [B, num_classes]
 
