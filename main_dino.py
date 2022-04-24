@@ -30,9 +30,10 @@ import torch.nn as nn
 import torch.distributed as dist
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
-import torch.nn.MSELoss as MSE
+from torch.nn import MSELoss
 from torchvision import datasets, transforms
 from torchvision import models as torchvision_models
+import config as cfg
 
 import utils
 import vision_transformer as vits
@@ -161,9 +162,9 @@ def train_dino(args):
         num_workers=params.num_workers,
         pin_memory=True,
         drop_last=True,
-        collate_fn=collate_fn_train
+        collate_fn=collate_fn_train,
     )
-    print(f"Data loaded: there are {len(dataset)} videos.")
+    print(f'Data loaded: there are {len(dataset)} videos.')
 
     # ============ building student and teacher networks ... ============
     # if the network is ViViT
@@ -209,7 +210,7 @@ def train_dino(args):
     else:
         teacher_without_ddp = teacher
     # teacher and student start with the same weights
-    teacher.load_state_dict(student.module.state_dict())#module.state_dict())
+    teacher.load_state_dict(student.state_dict())#module.state_dict())
     # there is no backpropagation through the teacher, so no need for gradients
     for p in teacher.parameters():
         p.requires_grad = False
@@ -225,8 +226,8 @@ def train_dino(args):
         args.epochs,
     )
 
-    spatial_loss = MSE()
-    
+    spatial_loss = MSELoss()
+
     if torch.cuda.device_count()>0:
         dino_loss = dino_loss.cuda()
         spatial_loss = spatial_loss.cuda()
@@ -258,7 +259,7 @@ def train_dino(args):
     )
     # momentum parameter is increased to 1. during training with a cosine schedule
     momentum_schedule = utils.cosine_scheduler(args.momentum_teacher, 1,
-                                               args.epochs, len(data_loader))
+                                                args.epochs, len(data_loader))
     print(f"Loss, optimizer and schedulers ready.")
 
     # ============ optionally resume training ... ============
@@ -282,7 +283,7 @@ def train_dino(args):
         #data_loader.sampler.set_epoch(epoch)
 
         # ============ training one epoch of DINO ... ============
-        train_stats, loss_val = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
+        train_stats, loss_val = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, spatial_loss,
             data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
             epoch, fp16_scaler, args)
 
@@ -299,7 +300,7 @@ def train_dino(args):
         if fp16_scaler is not None:
             save_dict['fp16_scaler'] = fp16_scaler.state_dict()
         
-        if os.path.exists(cfg.save_models_dir)
+        if os.path.exists(cfg.save_models_dir):
             os.makedir(cfg.save_models_dir)
         if loss_val < best:
             best = loss_val
@@ -314,7 +315,7 @@ def train_dino(args):
         if args.saveckp_freq and epoch % args.saveckp_freq == 0:
             utils.save_on_master(save_dict, os.path.join(args.output_dir, f'checkpoint{epoch:04}.pth'))
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                     'epoch': epoch}
+                        'epoch': epoch}
         if utils.is_main_process():
             with (Path(args.output_dir) / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")'''
@@ -342,13 +343,19 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, spatial_lo
         clips = clips.cuda()
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
-            teacher_output, teacher_attn = teacher(clips[:params.batch_size*2], 'teacher')  # only the global views pass through the teacher
-            student_output, student_attn = student(clips, 'student')
+            #print(f'clips {clips}')
+            teacher_output, teacher_attn = teacher(clips[:params.batch_size*2])  # only the global views pass through the teacher
+            student_output, student_attn = student(clips)
             d_loss = dino_loss(student_output, teacher_output, epoch)
             try:
+                #print(f'teacher attn {teacher_attn.shape}')
+                #print(f'student attn {student_attn.shape}')
                 te_attn_la = teacher_attn[:,:8,:]
                 te_attn_lb = teacher_attn[:,8:,:]
-                st_attn = st_attn[params.batch_size*2:]
+                st_attn = student_attn[params.batch_size*2:]
+
+                #print(f'teacher attn la {te_attn_la.shape}')
+                #print(f'teacher attn lb {te_attn_lb}')
 
                 te_attn = torch.stack([te_attn_la[0], te_attn_la[1], te_attn_lb[0], te_attn_lb[1]], dim=0).view(4, -1)
                 st_attn = torch.stack([st_attn[0], st_attn[2], st_attn[1], st_attn[3]], dim=0).view(4, -1)

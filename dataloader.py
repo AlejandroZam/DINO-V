@@ -14,6 +14,7 @@ import cv2
 from tqdm import tqdm
 import time
 import torchvision.transforms as trans
+import os
 
 
 # from decord import VideoReader
@@ -39,6 +40,7 @@ class basic_dataloader(Dataset):
         self.all_paths = self.labeled_datapaths + self.unlabeled_datapaths
 
         self.classes = load_classes(cfg.class_mapping)
+
         # self.classes = json.load(open(cfg.class_mapping))['classes']
         self.shuffle = shuffle
 
@@ -64,11 +66,11 @@ class basic_dataloader(Dataset):
     def process_data(self, idx):
 
         # label_building
-        vid_path = cfg.data_folder + self.data[idx]
+        vid_path = self.data[idx]
 
         # label = self.classes[vid_path.split('/')[-1]] # THIS MIGHT BE DIFFERNT AFTER STEVE MOVE THE PATHS
-        label = self.classes[vid_path.split('/')[7]]
-        vid_path = vid_path.split(' ')[0]
+        label = self.classes[vid_path.split('/')[4]]
+
         # clip_building
         global_clip1, local_clip1a, local_clip1b = self.build_clip(vid_path)
         global_clip2, local_clip2a, local_clip2b = self.build_clip(vid_path)
@@ -142,9 +144,6 @@ class basic_dataloader(Dataset):
                 local_clip2 = local_clip2 + local_clip2[::-1][1:remaining_num_frames + 1]
 
             if len(local_clip2) <= 8:
-                print(global_frames)
-                print(local_frames2)
-                print(frame_count)
                 return None, None, None
 
             try:
@@ -179,6 +178,7 @@ class basic_dataloader(Dataset):
             return None
 
         return image
+
 def collate_fn_train(batch):
     global_clip1, global_clip2, local_clip1a, local_clip1b, local_clip2a, local_clip2b, label, vid_path = [], [], [], [], [], [], [], []
     clips = []
@@ -278,7 +278,23 @@ class val_dataloader(Dataset):
         try:
             cap = cv2.VideoCapture(vid_path)
             cap.set(1, 0)
-            frame_count = cap.get(7)
+            frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+
+            # Check that the frames have been grabbed
+            if frame_count == 0:
+                # loop over the frames of the video
+                # Much slower than getting the property but not all video formats
+                # support getting the property
+                while True:
+                    # grab the current frame
+                    (grabbed, frame) = cap.read()
+                
+                    # check to see if we have reached the end of the
+                    # video
+                    if not grabbed:
+                        break
+                    # increment the total number of frames read
+                    frame_count += 1
 
             ############################# frame_list maker start here#################################
 
