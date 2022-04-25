@@ -35,6 +35,8 @@ from torchvision import datasets, transforms
 from torchvision import models as torchvision_models
 import config as cfg
 
+from collections import OrderedDict
+
 import utils
 import vision_transformer as vits
 from vision_transformer import DINOHead
@@ -210,7 +212,18 @@ def train_dino(args):
     else:
         teacher_without_ddp = teacher
     # teacher and student start with the same weights
-    teacher.load_state_dict(student.state_dict())#module.state_dict())
+    
+    new_state_dict = OrderedDict()
+    
+    for k, v in student.state_dict().items():
+      name = k[7:] # remove `module.`
+      new_state_dict[name] = v
+    
+    
+    #teacher.load_state_dict(student.state_dict())#module.state_dict())
+    
+    teacher.load_state_dict(new_state_dict)#module.state_dict())
+    
     # there is no backpropagation through the teacher, so no need for gradients
     for p in teacher.parameters():
         p.requires_grad = False
@@ -396,7 +409,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, spatial_lo
         # EMA update for the teacher
         with torch.no_grad():
             m = momentum_schedule[it]  # momentum parameter
-            for param_q, param_k in zip(student.module.parameters(), teacher_without_ddp.parameters()):
+            for param_q, param_k in zip(student.parameters(), teacher_without_ddp.parameters()):
                 param_k.data.mul_(m).add_((1 - m) * param_q.detach().data)
 
         # logging

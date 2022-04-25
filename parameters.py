@@ -4,7 +4,7 @@ num_frames = 16
 num_workers = 10#8
 batch_size = 1#24
 learning_rate = 1e-4#restarting1e-3#1e-4#1e-5
-num_epochs = 100
+num_epochs = 1
 data_percentage = 1.0
 v_batch_size = 32#80
 

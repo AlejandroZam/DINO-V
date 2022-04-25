@@ -29,13 +29,24 @@ def load_classes(path):
         classes[t[1]] = t[0]
 
     return classes
-
+def load_file_path(path,vPath):
+  f = open(vPath,'r')
+  text = f.read().splitlines()
+  f.close()
+  vid_path = []
+  for t in text:
+    temp = t.replace('/datasets/UCF-101/TrainingData',path)
+    vid_path.append(temp)
+  return vid_path
 class basic_dataloader(Dataset):
 
     def __init__(self, shuffle=True, data_percentage=1.0):
         # self.labeled_datapaths = open(os.path.join(cfg.path_folder,'10percentTrain_crcv.txt'),'r').read().splitlines()
-        self.labeled_datapaths = open(os.path.join(cfg.path_folder, 'UCF_labeled.txt'), 'r').read().splitlines()
-        self.unlabeled_datapaths = open(os.path.join(cfg.path_folder, 'UCF_unlabeled.txt'), 'r').read().splitlines()
+        #self.labeled_datapaths = open(os.path.join(cfg.path_folder, 'UCF_labeled.txt'), 'r').read().splitlines()
+        #self.unlabeled_datapaths = open(os.path.join(cfg.path_folder, 'UCF_unlabeled.txt'), 'r').read().splitlines()
+
+        self.labeled_datapaths = load_file_path(cfg.data_folder,os.path.join(cfg.path_folder, 'UCF_labeled.txt'))
+        self.unlabeled_datapaths = load_file_path(cfg.data_folder,os.path.join(cfg.path_folder, 'UCF_unlabeled.txt'))
 
         self.all_paths = self.labeled_datapaths + self.unlabeled_datapaths
 
@@ -69,7 +80,7 @@ class basic_dataloader(Dataset):
         vid_path = self.data[idx]
 
         # label = self.classes[vid_path.split('/')[-1]] # THIS MIGHT BE DIFFERNT AFTER STEVE MOVE THE PATHS
-        label = self.classes[vid_path.split('/')[4]]
+        label = self.classes[vid_path.split('/')[-2]]
 
         # clip_building
         global_clip1, local_clip1a, local_clip1b = self.build_clip(vid_path)
