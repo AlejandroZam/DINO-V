@@ -295,8 +295,9 @@ def train_dino(args):
     for epoch in range(start_epoch, args.epochs):
         #data_loader.sampler.set_epoch(epoch)
 
-        # ============ training one epoch of DINO ... ============
-        train_stats, loss_val = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, spatial_loss,
+        # ============ training one epoch of DINO ... ============ removing spartial loss
+        train_stats, loss_val = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, 
+        spatial_loss,
             data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
             epoch, fp16_scaler, args)
 
@@ -307,14 +308,14 @@ def train_dino(args):
             'optimizer': optimizer.state_dict(),
             'epoch': epoch + 1,
             'args': args,
-            'dino_loss': dino_loss.state_dict(),
-            'spatial_loss': spatial_loss.state_dict()
+            'dino_loss': dino_loss.state_dict()
+            ,'spatial_loss': spatial_loss.state_dict() #spartial loss
         }
         if fp16_scaler is not None:
             save_dict['fp16_scaler'] = fp16_scaler.state_dict()
         
         if os.path.exists(cfg.save_models_dir):
-            os.makedir(cfg.save_models_dir)
+            os.mkdir(cfg.save_models_dir)
         if loss_val < best:
             best = loss_val
             save_file_path = os.path.join(cfg.save_models_dir, 'model_{}_best_{}.pth'.format(epoch+1, str(loss_val)[:6]))
@@ -337,8 +338,9 @@ def train_dino(args):
     print('Training time {}'.format(total_time_str))
 
 
-def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, spatial_loss, data_loader,
-                    optimizer, lr_schedule, wd_schedule, momentum_schedule,epoch,
+def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, 
+    spatial_loss, 
+    data_loader,optimizer, lr_schedule, wd_schedule, momentum_schedule,epoch,
                     fp16_scaler, args):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)
@@ -360,6 +362,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, spatial_lo
             teacher_output, teacher_attn = teacher(clips[:params.batch_size*2])  # only the global views pass through the teacher
             student_output, student_attn = student(clips)
             d_loss = dino_loss(student_output, teacher_output, epoch)
+            #spartial loss
             try:
                 #print(f'teacher attn {teacher_attn.shape}')
                 #print(f'student attn {student_attn.shape}')
@@ -379,6 +382,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, spatial_lo
             except:
                 print(f'Spatial loss error {st_attn.shape}')
                 loss = d_loss
+            #loss = d_loss
         if it % 25 == 0:
             print(f'Loss for epoch {epoch+1}/{args.epochs} iteration {it} is {loss.item()}')
 
